@@ -1,29 +1,35 @@
-import React, { Component } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import axios from 'axios';
 
-const SongContext = React.createContext();
-
 const reducer = (state, action) => {
-  switch(action.type) {
+  switch (action.type) {
+    case 'TOP_TRACKS':
+      return {
+        ...state,
+        trackList: action.payload,
+        heading: 'Top 10 Tracks'
+      };
     case 'SEARCH_TRACKS':
       return {
         ...state,
         trackList: action.payload,
         heading: 'Search Results'
-      }
+      };
     default:
       return state;
   }
-}
+};
 
-export class SongProvider extends Component {
-  state = {
-    trackList: [],
-    heading: 'Top 10 Tracks',
-    dispatch: action => this.setState(state => reducer(state, action))
-  };
+let initState = {
+  trackList: [],
+  heading: ''
+};
 
-  componentDidMount() {
+export const SongContext = React.createContext();
+
+export const SongProvider = props => {
+  const [state, dispatch] = useReducer(reducer, initState);
+  useEffect(() => {
     axios
       .get(
         `https://cors-anywhere.herokuapp.com/http://api.musixmatch.com/ws/1.1/chart.tracks.get?page=1&page_size=10&country=us&f_has_lyrics=1&apikey=${
@@ -31,19 +37,18 @@ export class SongProvider extends Component {
         }`
       )
       .then(res => {
-        // console.log('res.data: ', res.data);
-        this.setState({ trackList: res.data.message.body.track_list });
+        console.log('res.data: ', res.data);
+        dispatch({
+          type: 'TOP_TRACKS',
+          payload: res.data.message.body.track_list
+        });
       })
       .catch(err => console.log(err));
-  }
+  }, []);
 
-  render() {
-    return (
-      <SongContext.Provider value={this.state}>
-        {this.props.children}
-      </SongContext.Provider>
-    );
-  }
-}
-
-export const SongConsumer = SongContext.Consumer;
+  return (
+    <SongContext.Provider value={{ state, dispatch }}>
+      {props.children}
+    </SongContext.Provider>
+  );
+};
